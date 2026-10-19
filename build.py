@@ -78,12 +78,12 @@ def jsonld(page, lang):
     addr = {"@type": "PostalAddress", "addressLocality": "Roatán", "addressRegion": "Islas de la Bahía", "addressCountry": "HN"}
     lawn = {"@type": "LocalBusiness", "@id": BASE + "#lawn", "name": "DR Lawn & Landscape Maintenance",
             "slogan": "Beautiful Outdoors, Well Maintained", "url": BASE + PATHS[("lawn", lang)],
-            "telephone": LAWN_TEL, "logo": BASE + "assets/logo-dr-lawn.jpg", "image": BASE + "assets/og-image.jpg",
+            "telephone": LAWN_TEL, "logo": BASE + "assets/logo-dr-lawn.jpg", "image": BASE + "assets/og-lawn-en.jpg",
             "address": addr, "areaServed": "Roatán, Bay Islands, Honduras", "founder": {"@id": BASE + "#dario"},
             "knowsLanguage": ["en", "es"]}
     pest = {"@type": "LocalBusiness", "@id": BASE + "#pest", "name": "Island Pest Control & Garden Care",
             "slogan": "Your peace of mind is our mission", "url": BASE + PATHS[("pest", lang)],
-            "telephone": PEST_TEL, "logo": BASE + "assets/ipc-wordmark.png", "image": BASE + "assets/og-image.jpg",
+            "telephone": PEST_TEL, "logo": BASE + "assets/ipc-wordmark.png", "image": BASE + "assets/og-pest-en.jpg",
             "address": addr, "areaServed": "Roatán, Bay Islands, Honduras", "founder": {"@id": BASE + "#dario"},
             "knowsLanguage": ["en", "es"]}
     graph = {"home": [person, lawn, pest], "lawn": [person, lawn], "pest": [person, pest]}[page]
@@ -95,6 +95,13 @@ def head(page, lang, title, desc):
     path = PATHS[(page, lang)]
     en_url, es_url = BASE + PATHS[(page, "en")], BASE + PATHS[(page, "es")]
     a = rel(path, "assets/")
+    og_img = BASE + "assets/" + ("og-image.jpg" if page == "home" else f"og-{page}-{lang}.jpg")
+    og_alt = {"home": T(lang, "DR Lawn & Landscape Maintenance and Island Pest Control & Garden Care logos. Darío Reyes, Roatán.",
+                        "Logos de DR Lawn & Landscape Maintenance e Island Pest Control & Garden Care. Darío Reyes, Roatán."),
+              "lawn": T(lang, "DR Lawn & Landscape Maintenance logo: lawn and landscape maintenance in Roatán, free quote on WhatsApp.",
+                        "Logo de DR Lawn & Landscape Maintenance: jardinería y paisajismo en Roatán, cotización gratis por WhatsApp."),
+              "pest": T(lang, "Island Pest Control & Garden Care ladybug mascot: pest control in Roatán, inspections on WhatsApp.",
+                        "Mascota mariquita de Island Pest Control & Garden Care: control de plagas en Roatán, inspecciones por WhatsApp.")}[page]
     return f"""<!doctype html>
 <html lang="{lang}">
 <head>
@@ -112,19 +119,23 @@ def head(page, lang, title, desc):
 <meta property="og:title" content="{escape(title)}">
 <meta property="og:description" content="{escape(desc)}">
 <meta property="og:url" content="{BASE + path}">
-<meta property="og:image" content="{BASE}assets/og-image.jpg">
+<meta property="og:image" content="{og_img}">
+<meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="DR Lawn &amp; Landscape Maintenance and Island Pest Control &amp; Garden Care logos">
+<meta property="og:image:alt" content="{escape(og_alt)}">
 <meta property="og:locale" content="{T(lang, 'en_US', 'es_HN')}">
 <meta property="og:locale:alternate" content="{T(lang, 'es_HN', 'en_US')}">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{escape(title)}">
+<meta name="twitter:description" content="{escape(desc)}">
+<meta name="twitter:image" content="{og_img}">
+<meta name="twitter:image:alt" content="{escape(og_alt)}">
 <link rel="icon" href="{a}favicon.svg" type="image/svg+xml">
 <link rel="icon" href="{a}favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="{a}apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=DM+Serif+Display&family=Work+Sans:wght@400;500;600&display=swap">
+<link rel="preload" href="{a}fonts/dm-serif-display-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{a}fonts/work-sans-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{a}styles.css">
 <script type="application/ld+json">
 {jsonld(page, lang)}
@@ -241,9 +252,119 @@ def footer(page, lang):
 
 
 # ---------------------------------------------------------------- shared blocks
-def ph(caption, cls="", icon="leaf"):
-    return (f'<figure class="ph {cls}" role="img" aria-label="[photo] {escape(caption)}">{ic(icon)}'
-            f'<figcaption aria-hidden="true">[photo] {escape(caption)}</figcaption></figure>')
+# Photo slots: designed placeholder panels (line-art in the site palette) with an honest caption that
+# says which photo goes where. Swap each <figure class="ph"> for an <img> once Darío sends the photos.
+G = '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+SOFT = 'fill="currentColor" fill-opacity=".13"'
+
+
+def _leaf(x, y, rot=0, s=1.0):
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<path d="M0 0C6-9 18-9 24 0C18 9 6 9 0 0Z" {SOFT}/><path d="M0 0H21"/></g>')
+
+
+def _palm(x, y, s=1.0):
+    return (f'<g transform="translate({x} {y}) scale({s})"><path d="M0 0C2-26 7-48 16-70"/>'
+            '<path d="M16-70C-2-80-18-76-30-64"/><path d="M16-70C4-88-10-92-22-90"/><path d="M16-70C22-90 36-98 50-96"/>'
+            '<path d="M16-70C34-76 50-70 58-56"/><path d="M16-70C16-84 10-96 2-104"/></g>')
+
+
+def _bug(x, y, s=1.0):  # the IPC ladybug, as a small brand stamp
+    return (f'<g transform="translate({x} {y}) scale({s})" stroke="none"><circle cy="-12" r="6" fill="#1f2a1c"/>'
+            '<circle r="12" fill="#b02a1f"/><path d="M0-12V12" stroke="#1f2a1c" stroke-width="1.6"/>'
+            '<circle cx="-5" cy="-3" r="2.2" fill="#1f2a1c"/><circle cx="5" cy="-3" r="2.2" fill="#1f2a1c"/>'
+            '<circle cx="-5" cy="5" r="2.2" fill="#1f2a1c"/><circle cx="5" cy="5" r="2.2" fill="#1f2a1c"/></g>')
+
+
+def _waves(y, op=".45"):
+    return (f'<path stroke-opacity="{op}" d="M-10 {y}c20-8 40-8 60 0s40 8 60 0 40-8 60 0 40 8 60 0 40-8 60 0 40 8 60 0 40-8 60 0"/>'
+            f'<path stroke-opacity=".25" d="M10 {y + 14}c20-8 40-8 60 0s40 8 60 0 40-8 60 0 40 8 60 0 40-8 60 0 40 8 60 0"/>')
+
+
+def _stripes(x0, x1, top, bottom, n, vp=(200, 40)):
+    out, step = [], (x1 - x0) / n
+    t = (top - vp[1]) / (bottom - vp[1])
+    for i in range(0, n, 2):
+        b0, b1 = x0 + i * step, x0 + (i + 1) * step
+        a0, a1 = vp[0] + (b0 - vp[0]) * t, vp[0] + (b1 - vp[0]) * t
+        out.append(f'<path d="M{a0:.0f} {top}L{a1:.0f} {top}L{b1:.0f} {bottom}L{b0:.0f} {bottom}Z" fill="currentColor" fill-opacity=".11" stroke="none"/>')
+    return "".join(out)
+
+
+def _scene(name):
+    if name == "mow":
+        art = (_stripes(-300, 700, 172, 300, 16) + G +
+               '<circle cx="92" cy="80" r="17" stroke-opacity=".55"/><circle cx="92" cy="80" r="30" stroke-opacity=".18"/>'
+               '<path stroke-opacity=".5" d="M0 172C70 160 130 166 200 158S330 150 400 164"/>' + _palm(300, 170) +
+               "".join(f'<path stroke-opacity=".55" stroke-width="1.6" d="M{x} {y}q-2-7-5-9M{x} {y}q0-8 1-11M{x} {y}q3-7 6-8"/>' for x, y in [(44, 190), (128, 200), (236, 192), (356, 204), (90, 236), (300, 246)]) + '</g>')
+    elif name == "hedge":
+        bushes = [(36, 150, 128), (164, 266, 108), (280, 372, 140)]
+        def bush(a, b, t):
+            n = max(3, round((b - a) / 24)); w = (b - a) / n
+            return f'<path d="M{a} 230V{t + 12}' + "".join(f'a{w / 2:.1f} {w / 2.4:.1f} 0 0 1 {w:.1f} 0' for _ in range(n)) + f'V230Z" {SOFT}/>'
+        art = G + "".join(bush(a, b, t) for a, b, t in bushes)
+        art += "".join(f'<path stroke-opacity=".45" d="M{x} {y}q4-5 8 0"/>' for x, y in
+                       [(60, 160), (96, 178), (120, 150), (70, 205), (190, 140), (226, 160), (204, 196), (244, 210), (300, 170), (336, 158), (318, 206), (350, 196)])
+        art += ('<path d="M20 232H380"/><path stroke-dasharray="1 9" stroke-width="2.4" d="M24 248H376"/>'
+                '<g transform="translate(330 88) rotate(-30)" stroke-opacity=".7"><circle cx="-14" cy="18" r="7"/><circle cx="14" cy="18" r="7"/>'
+                '<path d="M-9 13L10-24M9 13L-10-24"/></g></g>')
+    elif name == "cleanup":
+        art = (G + '<path d="M16 222H186M214 222H384"/>' +
+               "".join(_leaf(x, y, r, .9) for x, y, r in [(34, 206, -20), (78, 214, 25), (120, 200, -60), (60, 186, 70), (150, 212, 10), (104, 176, 140), (160, 184, -35)]) +
+               '<path stroke-opacity=".6" d="M40 160l26 10M48 168l6-10M132 150l22 16"/></g>' +
+               _stripes(214, 384, 150, 222, 6, vp=(300, 60)) + G +
+               '<path d="M300 222V196"/><circle cx="300" cy="186" r="14" ' + SOFT + '/><circle cx="286" cy="196" r="9" ' + SOFT + '/><circle cx="314" cy="196" r="9" ' + SOFT + '/>'
+               '<path stroke-dasharray="6 8" stroke-opacity=".55" d="M200 18V282"/></g>'
+               '<circle cx="200" cy="120" r="17" fill="#fffdf8" stroke="currentColor" stroke-width="2"/>'
+               + G + '<path d="M194 114l-6 6 6 6M206 114l6 6-6 6"/></g>')
+    elif name == "bed":
+        art = (G + '<path d="M24 258C90 206 310 206 376 258" ' + SOFT + '/>'
+               '<path stroke-dasharray="10 6" stroke-opacity=".6" d="M24 266C90 214 310 214 376 266"/>'
+               '<path d="M130 236C128 200 120 170 98 146C122 150 140 172 142 204M142 236C150 196 170 168 198 156C188 182 166 206 150 236"/>'
+               '<path d="M98 146C110 164 126 196 134 230" stroke-opacity=".5"/>'
+               '<path d="M220 238V168M262 238V186"/>' +
+               "".join(f'<g transform="translate({x} {y})"><circle r="6" {SOFT}/>' + "".join(
+                   f'<ellipse rx="5" ry="9" transform="rotate({a}) translate(0 -13)" {SOFT}/>' for a in range(0, 360, 72)) + '</g>'
+                       for x, y in [(220, 160), (262, 178)]) +
+               '<path d="M300 238L286 182M306 238L306 172M312 238L330 184M318 238L346 200M294 238L272 204"/>'
+               '<path d="M70 236V214M70 220C62 212 56 212 52 214M70 214C78 206 84 206 88 208"/></g>')
+    elif name == "kitchen":
+        tiles = "".join(f'<path d="M0 {y}H400"/>' for y in range(40, 170, 32)) + "".join(f'<path d="M{x} 30V170"/>' for x in range(30, 400, 46))
+        art = (f'<g fill="none" stroke="currentColor" stroke-width="1.2" stroke-opacity=".22">{tiles}</g>' + G +
+               '<path d="M0 170H400V186H0Z" ' + SOFT + '/><path d="M20 186V290M140 186V290M260 186V290M380 186V290"/>'
+               '<path d="M118 214V236M162 214V236M238 214V236M282 214V236"/>'
+               '<circle cx="232" cy="118" r="46" fill="#fffdf8" fill-opacity=".75" stroke-width="3"/>'
+               '<path d="M265 151L298 184" stroke-width="9"/>'
+               '<path stroke-dasharray="0 11" stroke-width="5" stroke-opacity=".7" d="M200 128C214 116 232 112 256 106"/></g>' + _bug(72, 80, 1.05))
+    elif name == "rental":
+        art = (G + _waves(258) + '<path d="M96 156L182 104L268 156"/><path d="M110 152V228H254V152" ' + SOFT + '/>'
+               '<path d="M168 228V188H196V228M126 172H152V196H126ZM212 172H238V196H212Z"/>'
+               '<path d="M90 228H276"/>' + _palm(306, 230, 1.05) +
+               '<path d="M352 200L332 186M332 186L320 192"/>'
+               '<path stroke-dasharray="0 10" stroke-width="4" stroke-opacity=".6" d="M318 190C300 176 288 170 272 172M318 196C298 196 286 202 276 210"/></g>' + _bug(60, 108))
+    elif name == "prune":
+        art = (G + '<circle cx="320" cy="72" r="18" stroke-opacity=".5"/>'
+               '<path d="M20 270C90 226 150 186 230 150C270 132 310 122 360 120"/><path d="M150 188C160 160 176 140 196 128"/>' +
+               "".join(_leaf(x, y, r, 1.05) for x, y, r in [(70, 246, -70), (110, 222, 20), (176, 176, -80), (196, 128, -40), (250, 142, 15), (300, 126, -60), (340, 121, 10)]) +
+               '<path stroke-width="3" stroke-opacity=".8" d="M230 150l6-12"/>'
+               '<g transform="translate(112 92) rotate(-10)"><path d="M0 0C10-10 26-18 44-18C32-8 16-2 0 0Z" ' + SOFT + '/>'
+               '<path d="M0 0C12 0 28-4 40-12" stroke-opacity=".7"/>'
+               '<path stroke-width="7" d="M-4 4C-18 14-28 28-32 44M2 6C-2 22-2 38 4 52"/><circle r="4.5" fill="#fffdf8"/></g></g>')
+    else:  # portrait
+        return ('<svg viewBox="0 0 400 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">' + G +
+                '<path d="M80 440V214A120 120 0 0 1 320 214V440" stroke-opacity=".35" fill="currentColor" fill-opacity=".06"/>'
+                '<circle cx="200" cy="214" r="50" ' + SOFT + '/><path d="M108 440C108 344 148 300 200 300S292 344 292 440" ' + SOFT + '/>'
+                + _waves(456, ".35") + _leaf(316, 134, -60, 1.3) + _leaf(334, 160, -20, 1.1) + '<path d="M300 176C320 150 330 130 332 110"/></g></svg>')
+    lift = {"hedge": 26, "cleanup": 24, "bed": 18, "rental": 40, "kitchen": 0, "mow": 0, "prune": 20}[name]
+    if lift:
+        art = f'<g transform="translate(0 -{lift})">{art}</g>'
+    return f'<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">{art}</svg>'
+
+
+def ph(lang, scene, caption, cls=""):
+    return (f'<figure class="ph {cls}">{_scene(scene)}<figcaption><span class="ph-k">{ic("camera")}'
+            f'{T(lang, "Your photo here", "Tu foto aquí")}<span class="sr-only">:</span></span>'
+            f'<span class="ph-d">{escape(caption)}</span></figcaption></figure>')
 
 
 def reviews(lang, tags):
@@ -473,7 +594,7 @@ def home(lang):
 
   <section id="about" class="band-paper" aria-labelledby="about-title">
     <div class="wrap about-grid">
-      {ph(T(lang, "Portrait of Darío Reyes", "Retrato de Darío Reyes"), "portrait")}
+      {ph(lang, "portrait", T(lang, "Portrait of Darío Reyes", "Retrato de Darío Reyes"), "portrait")}
       <div>
         <p class="kicker">{T(lang, "About", "Nosotros")}</p>
         <h2 class="h2" id="about-title">{T(lang, "Meet Darío Reyes", "Conoce a Darío Reyes")}</h2>
@@ -623,7 +744,7 @@ def lawn_page(lang):
         </div>
         <div class="lead"><p>{T(lang, "Every property is different, and we approach each project with the same commitment to quality.", "Cada propiedad es distinta, y abordamos cada proyecto con el mismo compromiso con la calidad.")}</p><p>{T(lang, "From routine lawn maintenance to detailed yard cleanups, we work to leave every outdoor space looking fresh, clean, and well cared for.", "Desde el mantenimiento regular hasta limpiezas detalladas, trabajamos para dejar cada espacio exterior fresco, limpio y bien cuidado.")}</p></div>
       </div>
-      <div class="gallery">{ph(T(lang, "Freshly mowed lawn in Roatán", "Césped recién cortado en Roatán"))}{ph(T(lang, "Trimmed hedges and clean edges", "Setos y bordes recortados"), "alt")}{ph(T(lang, "Yard clean up, before and after", "Limpieza de jardín, antes y después"), "alt")}{ph(T(lang, "Landscaped garden bed", "Jardín paisajístico"))}</div>
+      <div class="gallery">{ph(lang, "mow", T(lang, "Freshly mowed lawn in Roatán", "Césped recién cortado en Roatán"))}{ph(lang, "hedge", T(lang, "Trimmed hedges and clean edges", "Setos y bordes recortados"), "alt")}{ph(lang, "cleanup", T(lang, "Yard clean up, before and after", "Limpieza de jardín, antes y después"), "alt")}{ph(lang, "bed", T(lang, "Landscaped garden bed", "Jardín paisajístico"))}</div>
     </div>
   </section>
 
@@ -729,14 +850,14 @@ def pest_page(lang):
         <h2 class="h2" id="svc-title">{T(lang, "Homes, businesses and gardens across Roatán.", "Casas, negocios y jardines en todo Roatán.")}</h2>
         <p class="lead">{T(lang, "Residential and commercial.", "Residencial y comercial.")}</p>
       </div>
-      <div class="cards">{cards}</div>
+      <div class="cards cards-5">{cards}</div>
     </div>
   </section>
 
   <section class="band-paper" id="work" aria-labelledby="work-title">
     <div class="wrap">
       <div class="section-head"><p class="kicker">{T(lang, "Our work", "Nuestro trabajo")}</p><h2 class="h2" id="work-title">{T(lang, "On the job in Roatán", "Trabajando en Roatán")}</h2></div>
-      <div class="gallery g3">{ph(T(lang, "Inspection in a restaurant kitchen", "Inspección en la cocina de un restaurante"), "pest", "bug")}{ph(T(lang, "Preventive treatment at a vacation rental", "Tratamiento preventivo en una renta vacacional"), "pest", "spray")}{ph(T(lang, "Garden maintenance and pruning", "Mantenimiento y poda de jardín"), "alt")}</div>
+      <div class="gallery g3">{ph(lang, "kitchen", T(lang, "Inspection in a restaurant kitchen", "Inspección en la cocina de un restaurante"), "pest")}{ph(lang, "rental", T(lang, "Preventive treatment at a vacation rental", "Tratamiento preventivo en una renta vacacional"), "pest")}{ph(lang, "prune", T(lang, "Garden maintenance and pruning", "Mantenimiento y poda de jardín"), "alt")}</div>
     </div>
   </section>
 
@@ -806,24 +927,41 @@ NOT_FOUND = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Page not found | DR Lawn &amp; Landscape · Island Pest Control</title>
 <meta name="robots" content="noindex">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23234f17'/%3E%3Ctext x='32' y='42' font-family='Georgia' font-size='28' fill='%23fffdf8' text-anchor='middle'%3EDR%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#234f17">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <style>
-:root{--cream:#f6f2ea;--ink:#1f2a1c;--muted:#4c5747;--green:#2f6b1f;--green-deep:#234f17;--terra:#a8471f;--red:#b02a1f;--wa:#1e7a46}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--cream);color:var(--ink);font:400 1rem/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 16px}
-main{max-width:620px}.k{font:600 .75rem/1.4 system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--terra)}
-h1{font:400 clamp(2.2rem,7vw,3.4rem)/1.1 Georgia,serif;margin:10px 0 14px}p{color:var(--muted)}
-.b{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.b a{display:inline-flex;align-items:center;min-height:46px;padding:10px 20px;border-radius:999px;font-weight:600;text-decoration:none;color:#fff}
-.h{background:var(--green-deep)}.l{background:var(--wa)}.p{background:var(--red)}
+@font-face{font-family:"DM Serif Display";font-weight:400;font-display:swap;src:url("/assets/fonts/dm-serif-display-400.woff2") format("woff2")}
+@font-face{font-family:"Work Sans";font-weight:400 600;font-display:swap;src:url("/assets/fonts/work-sans-var.woff2") format("woff2")}
+@font-face{font-family:"Caveat";font-weight:600;font-display:swap;src:url("/assets/fonts/caveat-600.woff2") format("woff2")}
+:root{--cream:#f6f2ea;--paper:#fffdf8;--ink:#1f2a1c;--muted:#4c5747;--line:#d9d0bd;--green:#2f6b1f;--green-deep:#234f17;--terra:#a8471f;--terra-soft:#f2c9a8;--red:#b02a1f;--red-deep:#8f2118;--wa:#1e7a46}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 1px 1px,rgba(35,79,23,.08) 1px,transparent 1.6px) 0 0/16px 16px,var(--cream);color:var(--ink);font:400 1rem/1.6 "Work Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:32px 16px}
+main{width:100%;max-width:680px;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:38px 24px 32px;box-shadow:0 1px 2px rgba(31,42,28,.06),0 8px 24px rgba(31,42,28,.06);position:relative;overflow:hidden}
+main::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:linear-gradient(90deg,var(--green) 50%,var(--red) 50%)}
+.marks{display:flex;align-items:center;gap:10px;margin-bottom:22px}.marks img{mix-blend-mode:multiply;display:block}
+.k{font:600 .75rem/1.4 "Work Sans",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--terra);margin:0}
+h1{font:400 clamp(2.1rem,7vw,3.2rem)/1.08 "DM Serif Display",Georgia,serif;margin:10px 0 6px;letter-spacing:-.01em}
+.es{display:block;font-family:"Caveat",cursive;font-weight:600;color:var(--green);font-size:clamp(1.6rem,5vw,2rem);line-height:1.2;margin-bottom:14px}
+p{color:var(--muted);margin:0 0 .8em}
+.b{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+.b a{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:10px 20px;border-radius:999px;font-weight:600;text-decoration:none;color:#fff;border:2px solid transparent}
+.h{background:var(--green-deep)}.h.o{background:transparent;color:var(--green-deep);border-color:var(--green-deep)!important}.l{background:var(--wa)}.p{background:var(--red)}
+.b a:hover{filter:brightness(.92)}
+:focus-visible{outline:3px solid var(--terra);outline-offset:3px;border-radius:6px}
+@media (max-width:559px){.b a{width:100%;padding:10px 14px;font-size:.95rem;white-space:nowrap}}
 </style>
 </head>
 <body>
 <main>
+<div class="marks"><img id="m-dr" src="/assets/logo-dr-lawn.jpg" width="54" height="54" alt=""><img id="m-ipc" src="/assets/ipc-mark.png" width="34" height="44" alt=""></div>
 <p class="k">404 · DR Lawn &amp; Landscape · Island Pest Control</p>
-<h1>This page doesn't exist. <span lang="es">Esta página no existe.</span></h1>
-<p>The link may be old or mistyped. Go back to the home page, or write to us on WhatsApp.<br><span lang="es">Puede que el enlace sea antiguo o tenga un error. Vuelve al inicio o escríbenos por WhatsApp.</span></p>
+<h1>This page doesn't exist.</h1>
+<span class="es" lang="es">Esta página no existe.</span>
+<p>The link may be old or mistyped. Go back to the home page, or write to us on WhatsApp.</p>
+<p lang="es">Puede que el enlace sea antiguo o tenga un error. Vuelve al inicio o escríbenos por WhatsApp.</p>
 <div class="b">
 <a class="h" id="home-en" href="/">Home</a>
-<a class="h" id="home-es" href="/es/" lang="es">Inicio</a>
+<a class="h o" id="home-es" href="/es/" lang="es">Inicio</a>
 <a class="l" href="https://wa.me/50498350265" target="_blank" rel="noopener">WhatsApp lawn · +504 9835-0265</a>
 <a class="p" href="https://wa.me/50488695915" target="_blank" rel="noopener">WhatsApp pest · +504 8869-5915</a>
 </div>
@@ -831,7 +969,8 @@ h1{font:400 clamp(2.2rem,7vw,3.4rem)/1.1 Georgia,serif;margin:10px 0 14px}p{colo
 <script>
 // Works on a custom domain, on Vercel and on a GitHub Pages project path (/dario-roatan/).
 (function(){var base=location.pathname.indexOf('/dario-roatan/')===0?'/dario-roatan/':'/';
-document.getElementById('home-en').href=base;document.getElementById('home-es').href=base+'es/';})();
+document.getElementById('home-en').href=base;document.getElementById('home-es').href=base+'es/';
+document.getElementById('m-dr').src=base+'assets/logo-dr-lawn.jpg';document.getElementById('m-ipc').src=base+'assets/ipc-mark.png';})();
 </script>
 </body>
 </html>
@@ -857,7 +996,7 @@ def main():
         for lang in ("en", "es"):
             alts = "".join(f'\n    <xhtml:link rel="alternate" hreflang="{l}" href="{BASE + PATHS[(page, l)]}"/>' for l in ("en", "es"))
             alts += f'\n    <xhtml:link rel="alternate" hreflang="x-default" href="{BASE + PATHS[(page, "en")]}"/>'
-            urls.append(f"  <url>\n    <loc>{BASE + PATHS[(page, lang)]}</loc>\n    <lastmod>2026-10-17</lastmod>{alts}\n  </url>")
+            urls.append(f"  <url>\n    <loc>{BASE + PATHS[(page, lang)]}</loc>\n    <lastmod>2026-10-19</lastmod>{alts}\n  </url>")
     write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
           + "\n".join(urls) + "\n</urlset>\n")
     write("robots.txt", f"User-agent: *\nAllow: /\n\nSitemap: {BASE}sitemap.xml\n")
