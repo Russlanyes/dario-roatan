@@ -16,6 +16,7 @@ PEST = "50488695915"
 LAWN_TEL, LAWN_SHOW = "+50498350265", "+504 9835-0265"
 PEST_TEL, PEST_SHOW = "+50488695915", "+504 8869-5915"
 YEAR = "2026"
+ASSET_V = "20261019"  # bump when styles.css / site.js change (assets are cached for 7 days)
 
 PATHS = {
     ("home", "en"): "", ("home", "es"): "es/",
@@ -136,7 +137,7 @@ def head(page, lang, title, desc):
 <link rel="apple-touch-icon" href="{a}apple-touch-icon.png">
 <link rel="preload" href="{a}fonts/dm-serif-display-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="{a}fonts/work-sans-var.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="{a}styles.css">
+<link rel="stylesheet" href="{a}styles.css?v={ASSET_V}">
 <script type="application/ld+json">
 {jsonld(page, lang)}
 </script>
@@ -245,7 +246,7 @@ def footer(page, lang):
   <a class="btn btn-red" href="{escape(wa(PEST, pest_msg(lang)))}" target="_blank" rel="noopener">{ic("wa", True)}<span>{T(lang, "Pest inspection", "Plagas")}<small>{PEST_SHOW}</small></span></a>
 </div>
 
-<script src="{a}site.js" defer></script>
+<script src="{a}site.js?v={ASSET_V}" defer></script>
 </body>
 </html>
 """
