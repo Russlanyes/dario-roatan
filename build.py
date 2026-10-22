@@ -17,7 +17,7 @@ PEST = "50488695915"
 LAWN_TEL, LAWN_SHOW = "+50498350265", "+504 9835-0265"
 PEST_TEL, PEST_SHOW = "+50488695915", "+504 8869-5915"
 YEAR = "2026"
-ASSET_V = "20261022"  # bump when styles.css / site.js change (assets are cached for 7 days)
+ASSET_V = "20261022b"  # bump when styles.css / site.js change (assets are cached for 7 days)
 
 PATHS = {
     ("home", "en"): "", ("home", "es"): "es/",
@@ -28,6 +28,7 @@ PATHS = {
     ("legal", "en"): "legal/", ("legal", "es"): "es/aviso-legal/",
 }
 LEGAL_PAGES = ("privacy", "terms", "legal")
+ANALYTICS = """<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "138e7115485747debf387de6c91d4e39"}'></script><!-- End Cloudflare Web Analytics -->"""
 LEGAL_UPDATED = ("October 22, 2026", "22 de octubre de 2026", "2026-10-22")
 JS_FLAG = 'document.documentElement.classList.add("js")'  # only inline script on the pages; its hash is in the CSP
 SPRITE = open(os.path.join(ROOT, "src", "sprite.svg")).read().strip()
@@ -154,7 +155,6 @@ def head(page, lang, title, desc):
 <script type="application/ld+json">
 {jsonld(page, lang)}
 </script>
-<!-- Analytics placeholder: none installed yet. Add a privacy-friendly snippet here once the client approves. -->
 <script>{JS_FLAG}</script>
 </head>
 <body>
@@ -266,6 +266,7 @@ def footer(page, lang):
 </div>
 
 <script src="{a}site.js?v={ASSET_V}" defer></script>
+{ANALYTICS}
 </body>
 </html>
 """
@@ -957,7 +958,7 @@ LEGAL = {
         "en": {
             "short": "Privacy", "kicker": "Privacy",
             "title": "Privacy Policy | DR Lawn & Landscape · Island Pest Control",
-            "desc": "How DR Lawn & Landscape and Island Pest Control in Roatán handle your information: WhatsApp only, nothing stored on this website, no cookies and no analytics.",
+            "desc": "How DR Lawn & Landscape and Island Pest Control in Roatán handle your information: WhatsApp only, nothing stored on this website, no cookies and only cookieless visit counts.",
             "h1": "Privacy policy",
             "intro": "This website belongs to two service lines run by the same person. This page explains, in plain language, what information we receive, why we use it and what you can ask us to do with it.",
             "sections": [
@@ -968,7 +969,7 @@ LEGAL = {
                 ("Why we use your information", ["To answer your questions, prepare quotes, schedule visits, do the work and follow up afterwards. We do not sell or rent your information, and we do not use it for advertising."]),
                 ("How long we keep it", ["We keep your messages and job details while we work together and for up to two years after your last service, so we can handle follow-up visits and keep our own records. If you ask, we delete them sooner, unless the law requires us to keep something, such as a record of a payment."]),
                 ("Your rights", [f"You can ask us to show you the information we have about you, to correct it, or to delete it. Write to {LAWN_WA} and we will answer within 30 days. You can also delete our chat from your own WhatsApp at any time."]),
-                ("No cookies, no analytics, no third-party scripts", ["This website sets no cookies and uses no analytics, no advertising tags and no third-party scripts. Fonts and images are served from this website itself, so your visit is not shared with Google, Facebook or anyone else. We checked this on the date shown at the top of this page."]),
+                ("No cookies, and cookieless visit counts", ["This website sets no cookies and uses no advertising tags. To learn how many people visit, it uses Cloudflare Web Analytics, a cookieless tool that sets no identifiers, does not track individual visitors and only gives aggregate counts (page views, country and device type). It sets no cookies. Apart from that script, which loads from Cloudflare, the site loads nothing from third parties: fonts and images are served from this website itself, so your visit is not shared with Google, Facebook or anyone else. We checked this on the date shown at the top of this page."]),
                 ("Hosting", [f"The website is hosted by Vercel. Like any web host, Vercel's servers process technical data such as your IP address to deliver the pages and keep them secure. We do not use that data to identify visitors. See the {ext(VERCEL_PRIVACY, 'Vercel Privacy Policy')}."]),
                 ("Photos of properties", ["We only publish photos of a customer's property, on this website or anywhere else, with that customer's permission."]),
                 ("Changes", ["If we change this policy, we update this page and the date at the top."]),
@@ -977,7 +978,7 @@ LEGAL = {
         "es": {
             "short": "Privacidad", "kicker": "Privacidad",
             "title": "Política de privacidad | DR Lawn & Landscape · Island Pest Control",
-            "desc": "Cómo DR Lawn & Landscape e Island Pest Control en Roatán tratan tus datos: solo por WhatsApp, este sitio no guarda nada, sin cookies y sin analítica.",
+            "desc": "Cómo DR Lawn & Landscape e Island Pest Control en Roatán tratan tus datos: solo por WhatsApp, este sitio no guarda nada, sin cookies y solo conteo de visitas sin cookies.",
             "h1": "Política de privacidad",
             "intro": "Este sitio pertenece a dos líneas de servicio dirigidas por la misma persona. Aquí te explicamos, en palabras sencillas, qué datos recibimos, para qué los usamos y qué puedes pedirnos que hagamos con ellos.",
             "sections": [
@@ -988,7 +989,7 @@ LEGAL = {
                 ("Para qué usamos tus datos", ["Para responder tus preguntas, preparar cotizaciones, agendar visitas, hacer el trabajo y darle seguimiento. No vendemos ni alquilamos tus datos, y no los usamos para publicidad."]),
                 ("Cuánto tiempo los guardamos", ["Guardamos tus mensajes y los datos del trabajo mientras trabajamos juntos y hasta dos años después de tu último servicio, para poder hacer visitas de seguimiento y llevar nuestros registros. Si nos lo pides, los borramos antes, salvo lo que la ley nos obligue a conservar, como el registro de un pago."]),
                 ("Tus derechos", [f"Puedes pedirnos que te mostremos los datos que tenemos sobre ti, que los corrijamos o que los borremos. Escríbenos al {LAWN_WA} y te respondemos en un plazo máximo de 30 días. También puedes borrar nuestro chat de tu WhatsApp cuando quieras."]),
-                ("Sin cookies, sin analítica, sin scripts de terceros", ["Este sitio no usa cookies, ni herramientas de analítica, ni etiquetas de publicidad, ni scripts de terceros. Las fuentes y las imágenes se sirven desde este mismo sitio, así que tu visita no se comparte con Google, Facebook ni nadie más. Lo comprobamos en la fecha que aparece arriba."]),
+                ("Sin cookies y con conteo de visitas sin cookies", ["Este sitio no usa cookies ni etiquetas de publicidad. Para saber cuántas personas lo visitan, usa Cloudflare Web Analytics, una herramienta sin cookies que no establece identificadores, no rastrea a visitantes individuales y solo ofrece conteos agregados (visitas por página, país y tipo de dispositivo). No establece ninguna cookie. Aparte de ese script, que se carga desde Cloudflare, el sitio no carga nada de terceros: las fuentes y las imágenes se sirven desde este mismo sitio, así que tu visita no se comparte con Google, Facebook ni nadie más. Lo comprobamos en la fecha que aparece arriba."]),
                 ("Alojamiento", [f"El sitio está alojado en Vercel. Como cualquier servicio de alojamiento, los servidores de Vercel procesan datos técnicos, como tu dirección IP, para mostrarte las páginas y mantenerlas seguras. No usamos esos datos para identificar a nadie. Consulta la {ext(VERCEL_PRIVACY, 'Política de privacidad de Vercel')}."]),
                 ("Fotos de propiedades", ["Solo publicamos fotos de la propiedad de un cliente, en este sitio o en cualquier otro lugar, con su permiso."]),
                 ("Cambios", ["Si cambiamos esta política, actualizamos esta página y la fecha que aparece arriba."]),
@@ -1172,9 +1173,11 @@ p{color:var(--muted);margin:0 0 .8em}
 document.getElementById('home-en').href=base;document.getElementById('home-es').href=base+'es/';
 document.getElementById('m-dr').src=base+'assets/logo-dr-lawn.jpg';document.getElementById('m-ipc').src=base+'assets/ipc-mark.png';})();
 </script>
+@@ANALYTICS@@
 </body>
 </html>
 """
+NOT_FOUND = NOT_FOUND.replace("@@ANALYTICS@@", ANALYTICS)
 
 
 def write(path, content):
@@ -1195,7 +1198,7 @@ def vercel_json():
     import json, re
     inline_404 = re.search(r"<script>(.*?)</script>", NOT_FOUND, re.S).group(1)
     csp = ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
-           f"script-src 'self' {csp_hash(JS_FLAG)} {csp_hash(inline_404)}; font-src 'self'; connect-src 'self'; "
+           f"script-src 'self' {csp_hash(JS_FLAG)} {csp_hash(inline_404)} https://static.cloudflareinsights.com; font-src 'self'; connect-src 'self' https://cloudflareinsights.com; "
            "frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://wa.me https://api.whatsapp.com")
     sec = [{"key": "X-Content-Type-Options", "value": "nosniff"},
            {"key": "X-Frame-Options", "value": "DENY"},
