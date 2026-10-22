@@ -120,7 +120,7 @@ def head(page, lang, title, desc):
     return f"""<!doctype html>
 <html lang="{lang}">
 <head>
-<meta name="google-site-verification" content="DJ2udmXHcaMHLbz_DX-49V_23lOGr13RAY6YT7UWUe0" />
+<meta name="google-site-verification" content="eLAcWBgbawYHVKgjj6qBlJbpfG8y035cS7dbeWm6K3U" />
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{escape(title)}</title>
@@ -1125,7 +1125,7 @@ def legal_page(kind, lang):
 NOT_FOUND = """<!doctype html>
 <html lang="en">
 <head>
-<meta name="google-site-verification" content="DJ2udmXHcaMHLbz_DX-49V_23lOGr13RAY6YT7UWUe0" />
+<meta name="google-site-verification" content="eLAcWBgbawYHVKgjj6qBlJbpfG8y035cS7dbeWm6K3U" />
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Page not found | DR Lawn &amp; Landscape · Island Pest Control</title>
