@@ -12,10 +12,10 @@ from html import escape
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 BASE = "https://dario-roatan.vercel.app/"
-LAWN = "50498350265"
-PEST = "50488695915"
-LAWN_TEL, LAWN_SHOW = "+50498350265", "+504 9835-0265"
-PEST_TEL, PEST_SHOW = "+50488695915", "+504 8869-5915"
+LAWN = "50432259091"
+PEST = "50432259091"
+LAWN_TEL, LAWN_SHOW = "+50432259091", "+504 3225-9091"
+PEST_TEL, PEST_SHOW = "+50432259091", "+504 3225-9091"
 YEAR = "2026"
 ASSET_V = "20261022b"  # bump when styles.css / site.js change (assets are cached for 7 days)
 
@@ -1165,8 +1165,8 @@ p{color:var(--muted);margin:0 0 .8em}
 <div class="b">
 <a class="h" id="home-en" href="/">Home</a>
 <a class="h o" id="home-es" href="/es/" lang="es">Inicio</a>
-<a class="l" href="https://wa.me/50498350265" target="_blank" rel="noopener">WhatsApp lawn · +504 9835-0265</a>
-<a class="p" href="https://wa.me/50488695915" target="_blank" rel="noopener">WhatsApp pest · +504 8869-5915</a>
+<a class="l" href="https://wa.me/50432259091" target="_blank" rel="noopener">WhatsApp lawn · +504 3225-9091</a>
+<a class="p" href="https://wa.me/50432259091" target="_blank" rel="noopener">WhatsApp pest · +504 3225-9091</a>
 </div>
 </main>
 <script>
