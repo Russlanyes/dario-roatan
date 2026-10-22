@@ -2,7 +2,8 @@
 """Static generator for the merged Darío Reyes site (DR Lawn & Landscape + Island Pest Control).
 
 Run:  python3 build.py   -> writes index.html, es/index.html, lawn/, pest/, es/jardineria/, es/plagas/,
-      404.html, sitemap.xml, robots.txt. All copy lives in this file (EN + ES side by side).
+      privacy/, terms/, legal/, es/privacidad/, es/terminos/, es/aviso-legal/, 404.html, sitemap.xml, robots.txt,
+      vercel.json (security headers; CSP hashes for the inline scripts are computed here). All copy lives in this file (EN + ES side by side).
 To move to a custom domain: change BASE below, rebuild, add the domain in Vercel (or a CNAME file for Pages).
 """
 import os
@@ -16,13 +17,19 @@ PEST = "50488695915"
 LAWN_TEL, LAWN_SHOW = "+50498350265", "+504 9835-0265"
 PEST_TEL, PEST_SHOW = "+50488695915", "+504 8869-5915"
 YEAR = "2026"
-ASSET_V = "20261019"  # bump when styles.css / site.js change (assets are cached for 7 days)
+ASSET_V = "20261022"  # bump when styles.css / site.js change (assets are cached for 7 days)
 
 PATHS = {
     ("home", "en"): "", ("home", "es"): "es/",
     ("lawn", "en"): "lawn/", ("lawn", "es"): "es/jardineria/",
     ("pest", "en"): "pest/", ("pest", "es"): "es/plagas/",
+    ("privacy", "en"): "privacy/", ("privacy", "es"): "es/privacidad/",
+    ("terms", "en"): "terms/", ("terms", "es"): "es/terminos/",
+    ("legal", "en"): "legal/", ("legal", "es"): "es/aviso-legal/",
 }
+LEGAL_PAGES = ("privacy", "terms", "legal")
+LEGAL_UPDATED = ("October 22, 2026", "22 de octubre de 2026", "2026-10-22")
+JS_FLAG = 'document.documentElement.classList.add("js")'  # only inline script on the pages; its hash is in the CSP
 SPRITE = open(os.path.join(ROOT, "src", "sprite.svg")).read().strip()
 
 
@@ -87,7 +94,12 @@ def jsonld(page, lang):
             "telephone": PEST_TEL, "logo": BASE + "assets/ipc-wordmark.png", "image": BASE + "assets/og-pest-en.jpg",
             "address": addr, "areaServed": "Roatán, Bay Islands, Honduras", "founder": {"@id": BASE + "#dario"},
             "knowsLanguage": ["en", "es"]}
-    graph = {"home": [person, lawn, pest], "lawn": [person, lawn], "pest": [person, pest]}[page]
+    if page in LEGAL_PAGES:
+        graph = [person, lawn, pest, {"@type": "WebPage", "@id": BASE + PATHS[(page, lang)], "url": BASE + PATHS[(page, lang)],
+                                      "name": LEGAL[page][lang]["title"], "inLanguage": lang, "dateModified": LEGAL_UPDATED[2],
+                                      "about": [{"@id": BASE + "#lawn"}, {"@id": BASE + "#pest"}]}]
+    else:
+        graph = {"home": [person, lawn, pest], "lawn": [person, lawn], "pest": [person, pest]}[page]
     return json.dumps({"@context": "https://schema.org", "@graph": graph}, ensure_ascii=False, indent=1)
 
 
@@ -96,13 +108,14 @@ def head(page, lang, title, desc):
     path = PATHS[(page, lang)]
     en_url, es_url = BASE + PATHS[(page, "en")], BASE + PATHS[(page, "es")]
     a = rel(path, "assets/")
-    og_img = BASE + "assets/" + ("og-image.jpg" if page == "home" else f"og-{page}-{lang}.jpg")
+    og_key = "home" if page in LEGAL_PAGES else page  # legal pages reuse the home share image
+    og_img = BASE + "assets/" + ("og-image.jpg" if og_key == "home" else f"og-{page}-{lang}.jpg")
     og_alt = {"home": T(lang, "DR Lawn & Landscape Maintenance and Island Pest Control & Garden Care logos. Darío Reyes, Roatán.",
                         "Logos de DR Lawn & Landscape Maintenance e Island Pest Control & Garden Care. Darío Reyes, Roatán."),
               "lawn": T(lang, "DR Lawn & Landscape Maintenance logo: lawn and landscape maintenance in Roatán, free quote on WhatsApp.",
                         "Logo de DR Lawn & Landscape Maintenance: jardinería y paisajismo en Roatán, cotización gratis por WhatsApp."),
               "pest": T(lang, "Island Pest Control & Garden Care ladybug mascot: pest control in Roatán, inspections on WhatsApp.",
-                        "Mascota mariquita de Island Pest Control & Garden Care: control de plagas en Roatán, inspecciones por WhatsApp.")}[page]
+                        "Mascota mariquita de Island Pest Control & Garden Care: control de plagas en Roatán, inspecciones por WhatsApp.")}[og_key]
     return f"""<!doctype html>
 <html lang="{lang}">
 <head>
@@ -142,7 +155,7 @@ def head(page, lang, title, desc):
 {jsonld(page, lang)}
 </script>
 <!-- Analytics placeholder: none installed yet. Add a privacy-friendly snippet here once the client approves. -->
-<script>document.documentElement.classList.add("js")</script>
+<script>{JS_FLAG}</script>
 </head>
 <body>
 {SPRITE}
@@ -168,8 +181,10 @@ def header(page, lang):
                  (rel(path, PATHS[("pest", lang)]), T(lang, "Pest Control", "Control de plagas"), page == "pest"),
                  (home + "#how", T(lang, "How we work", "Cómo trabajamos"), False),
                  (home + "#about", T(lang, "About", "Nosotros"), False),
-                 ("#contact", T(lang, "Contact", "Contacto"), False)]
-        if page == "lawn":
+                 ((home if page in LEGAL_PAGES else "") + "#contact", T(lang, "Contact", "Contacto"), False)]
+        if page in LEGAL_PAGES:  # no contact block on legal pages: send people to the home contact section
+            cta = f'<a class="btn btn-terra btn-sm" href="{home}#contact">{ic("wa", True)}{T(lang, "Contact us", "Contáctanos")}</a>'
+        elif page == "lawn":
             cta = a_wa(LAWN, lawn_msg(lang), T(lang, "Free quote", "Cotiza gratis"), "btn btn-wa btn-sm")
         else:
             cta = a_wa(PEST, pest_msg(lang), T(lang, "Book inspection", "Agenda inspección"), "btn btn-red btn-sm")
@@ -201,6 +216,9 @@ def footer(page, lang):
     a = rel(path, "assets/")
     home = rel(path, PATHS[("home", lang)])
     lawnp, pestp = rel(path, PATHS[("lawn", lang)]), rel(path, PATHS[("pest", lang)])
+    cur = ' aria-current="page"'
+    legal_links = '<span aria-hidden="true">·</span>'.join(
+        f'<a href="{rel(path, PATHS[(k, lang)])}"{cur if k == page else ""}>{LEGAL[k][lang]["short"]}</a>' for k in LEGAL_PAGES)
     return f"""<footer class="site-footer">
   <div class="wrap">
     <div class="footer-grid">
@@ -236,6 +254,7 @@ def footer(page, lang):
     </div>
     <div class="footer-bottom">
       <span>&copy; {YEAR} DR Lawn &amp; Landscape Maintenance · Island Pest Control &amp; Garden Care. {T(lang, "All rights reserved.", "Todos los derechos reservados.")}</span>
+      <nav class="footer-legal" aria-label="{T(lang, 'Legal', 'Legal')}">{legal_links}</nav>
       <span>{T(lang, "Roatán, Bay Islands, Honduras", "Roatán, Islas de la Bahía, Honduras")}</span>
     </div>
   </div>
@@ -648,7 +667,7 @@ def home(lang):
         <div class="field"><label for="f-area">{T(lang, "Area in Roatán", "Zona en Roatán")}</label><input id="f-area" type="text" placeholder="{T(lang, 'e.g. West Bay, French Harbour', 'ej. West Bay, French Harbour')}"></div>
         <div class="field"><label for="f-msg">{T(lang, "What do you need?", "¿Qué necesitas?")}</label><textarea id="f-msg" name="text" required></textarea></div>
         <button class="btn btn-wa" type="submit">{ic("wa", True)}{T(lang, "Send on WhatsApp", "Enviar por WhatsApp")}</button>
-        <p class="form-note">{T(lang, "Opens WhatsApp with your message ready to send. Nothing is stored on this site.", "Abre WhatsApp con tu mensaje listo para enviar. Este sitio no guarda ningún dato.")}</p>
+        <p class="form-note">{T(lang, "Opens WhatsApp with your message ready to send. Nothing is stored on this site.", "Abre WhatsApp con tu mensaje listo para enviar. Este sitio no guarda ningún dato.")} <a href="{rel(p, PATHS[("privacy", lang)])}">{T(lang, "Privacy policy", "Política de privacidad")}</a></p>
       </form>
     </div>
   </section>
@@ -920,6 +939,186 @@ def pest_page(lang):
     return head("pest", lang, title, desc) + header("pest", lang) + body + footer("pest", lang)
 
 
+# ---------------------------------------------------------------- LEGAL PAGES (privacy, terms, legal notice)
+# Plain-language, GDPR-style. Rules marked "needs Darío's confirmation" in MERGED-SITE-NOTES.md were assumed.
+WA_PRIVACY = "https://www.whatsapp.com/legal/privacy-policy"
+VERCEL_PRIVACY = "https://vercel.com/legal/privacy-policy"
+
+
+def ext(url, label):
+    return f'<a href="{url}" target="_blank" rel="noopener">{label}</a>'
+
+
+LAWN_WA = f'<a href="https://wa.me/{LAWN}" target="_blank" rel="noopener">WhatsApp {LAWN_SHOW}</a>'
+PEST_WA = f'<a href="https://wa.me/{PEST}" target="_blank" rel="noopener">WhatsApp {PEST_SHOW}</a>'
+
+LEGAL = {
+    "privacy": {
+        "en": {
+            "short": "Privacy", "kicker": "Privacy",
+            "title": "Privacy Policy | DR Lawn & Landscape · Island Pest Control",
+            "desc": "How DR Lawn & Landscape and Island Pest Control in Roatán handle your information: WhatsApp only, nothing stored on this website, no cookies and no analytics.",
+            "h1": "Privacy policy",
+            "intro": "This website belongs to two service lines run by the same person. This page explains, in plain language, what information we receive, why we use it and what you can ask us to do with it.",
+            "sections": [
+                ("Who is responsible", [f"Darío Reyes, owner of DR Lawn &amp; Landscape Maintenance and Island Pest Control &amp; Garden Care, in Roatán, Bay Islands, Honduras. He is responsible for the information you send us. For any privacy question, write to {LAWN_WA}."]),
+                ("What we collect", ["Only what you choose to send us when you write on WhatsApp or use the contact form: your name, your phone number (WhatsApp shows it to us), where your property is, the service you need, and anything else you include in your message, such as photos of the problem."]),
+                ("How the contact form works", ["The form does not send anything to us or to this website. When you press “Send on WhatsApp”, your browser opens WhatsApp with your message already written, and you decide whether to send it. Nothing you type in the form is saved or stored on this website."]),
+                ("WhatsApp", [f"Our conversations happen on WhatsApp, a service run by Meta. WhatsApp handles your messages under its own rules: {ext(WA_PRIVACY, 'WhatsApp Privacy Policy')}."]),
+                ("Why we use your information", ["To answer your questions, prepare quotes, schedule visits, do the work and follow up afterwards. We do not sell or rent your information, and we do not use it for advertising."]),
+                ("How long we keep it", ["We keep your messages and job details while we work together and for up to two years after your last service, so we can handle follow-up visits and keep our own records. If you ask, we delete them sooner, unless the law requires us to keep something, such as a record of a payment."]),
+                ("Your rights", [f"You can ask us to show you the information we have about you, to correct it, or to delete it. Write to {LAWN_WA} and we will answer within 30 days. You can also delete our chat from your own WhatsApp at any time."]),
+                ("No cookies, no analytics, no third-party scripts", ["This website sets no cookies and uses no analytics, no advertising tags and no third-party scripts. Fonts and images are served from this website itself, so your visit is not shared with Google, Facebook or anyone else. We checked this on the date shown at the top of this page."]),
+                ("Hosting", [f"The website is hosted by Vercel. Like any web host, Vercel's servers process technical data such as your IP address to deliver the pages and keep them secure. We do not use that data to identify visitors. See the {ext(VERCEL_PRIVACY, 'Vercel Privacy Policy')}."]),
+                ("Photos of properties", ["We only publish photos of a customer's property, on this website or anywhere else, with that customer's permission."]),
+                ("Changes", ["If we change this policy, we update this page and the date at the top."]),
+            ],
+        },
+        "es": {
+            "short": "Privacidad", "kicker": "Privacidad",
+            "title": "Política de privacidad | DR Lawn & Landscape · Island Pest Control",
+            "desc": "Cómo DR Lawn & Landscape e Island Pest Control en Roatán tratan tus datos: solo por WhatsApp, este sitio no guarda nada, sin cookies y sin analítica.",
+            "h1": "Política de privacidad",
+            "intro": "Este sitio pertenece a dos líneas de servicio dirigidas por la misma persona. Aquí te explicamos, en palabras sencillas, qué datos recibimos, para qué los usamos y qué puedes pedirnos que hagamos con ellos.",
+            "sections": [
+                ("Quién es el responsable", [f"Darío Reyes, dueño de DR Lawn &amp; Landscape Maintenance e Island Pest Control &amp; Garden Care, en Roatán, Islas de la Bahía, Honduras. Él es el responsable de los datos que nos envías. Para cualquier consulta sobre privacidad, escribe al {LAWN_WA}."]),
+                ("Qué datos recibimos", ["Solo lo que tú decides enviarnos cuando nos escribes por WhatsApp o usas el formulario de contacto: tu nombre, tu número de teléfono (WhatsApp nos lo muestra), la ubicación de tu propiedad, el servicio que necesitas y cualquier otra cosa que incluyas en tu mensaje, como fotos del problema."]),
+                ("Cómo funciona el formulario", ["El formulario no nos envía nada ni a nosotros ni a este sitio. Cuando tocas “Enviar por WhatsApp”, tu navegador abre WhatsApp con tu mensaje ya escrito y tú decides si lo envías. Nada de lo que escribes en el formulario se guarda en este sitio."]),
+                ("WhatsApp", [f"Nuestras conversaciones ocurren en WhatsApp, un servicio de Meta. WhatsApp trata tus mensajes según sus propias reglas: {ext(WA_PRIVACY, 'Política de privacidad de WhatsApp')}."]),
+                ("Para qué usamos tus datos", ["Para responder tus preguntas, preparar cotizaciones, agendar visitas, hacer el trabajo y darle seguimiento. No vendemos ni alquilamos tus datos, y no los usamos para publicidad."]),
+                ("Cuánto tiempo los guardamos", ["Guardamos tus mensajes y los datos del trabajo mientras trabajamos juntos y hasta dos años después de tu último servicio, para poder hacer visitas de seguimiento y llevar nuestros registros. Si nos lo pides, los borramos antes, salvo lo que la ley nos obligue a conservar, como el registro de un pago."]),
+                ("Tus derechos", [f"Puedes pedirnos que te mostremos los datos que tenemos sobre ti, que los corrijamos o que los borremos. Escríbenos al {LAWN_WA} y te respondemos en un plazo máximo de 30 días. También puedes borrar nuestro chat de tu WhatsApp cuando quieras."]),
+                ("Sin cookies, sin analítica, sin scripts de terceros", ["Este sitio no usa cookies, ni herramientas de analítica, ni etiquetas de publicidad, ni scripts de terceros. Las fuentes y las imágenes se sirven desde este mismo sitio, así que tu visita no se comparte con Google, Facebook ni nadie más. Lo comprobamos en la fecha que aparece arriba."]),
+                ("Alojamiento", [f"El sitio está alojado en Vercel. Como cualquier servicio de alojamiento, los servidores de Vercel procesan datos técnicos, como tu dirección IP, para mostrarte las páginas y mantenerlas seguras. No usamos esos datos para identificar a nadie. Consulta la {ext(VERCEL_PRIVACY, 'Política de privacidad de Vercel')}."]),
+                ("Fotos de propiedades", ["Solo publicamos fotos de la propiedad de un cliente, en este sitio o en cualquier otro lugar, con su permiso."]),
+                ("Cambios", ["Si cambiamos esta política, actualizamos esta página y la fecha que aparece arriba."]),
+            ],
+        },
+    },
+    "terms": {
+        "en": {
+            "short": "Terms", "kicker": "Terms",
+            "title": "Terms of Use and Service | DR Lawn & Landscape · Island Pest Control",
+            "desc": "Terms for this website and for lawn, landscape and pest control services by Darío Reyes in Roatán: free quotes, prices, scheduling, weather and treatment safety.",
+            "h1": "Terms of use and service",
+            "intro": "These terms cover this website and the services of DR Lawn &amp; Landscape Maintenance and Island Pest Control &amp; Garden Care, both run by Darío Reyes in Roatán. By using the website or booking a service, you accept them.",
+            "sections": [
+                ("This website", ["The website is for information only. It describes our services, but it is not an offer or a contract. We try to keep it accurate, and details such as services and availability can change."]),
+                ("Quotes", ["Quotes are free. A quote is an estimate and is not binding until we both confirm the work, the price and the date on WhatsApp. If the job turns out to be different from what was described, for example a larger area or a bigger infestation, we tell you before continuing and agree on the new price with you."]),
+                ("Prices and payment", ["Prices are in lempiras (HNL) or US dollars, as stated in your quote. How and when you pay is also agreed in the quote."]),
+                ("Service area", ["We work in Roatán and surrounding areas. If you are not sure we reach your area, ask us on WhatsApp."]),
+                ("Scheduling and weather", ["We agree the date and time with you on WhatsApp. Heavy rain or storms can make outdoor work or treatments unsafe or ineffective; when that happens we reschedule to the next available date at no extra cost. If you need to change a date, please tell us as early as possible."]),
+                ("Pest treatments and safety", ["Treatments are applied following the instructions on the product label. Before each treatment we give you safety instructions, and you agree to follow them, including:",
+                                                ["keeping children, pets and anyone not involved away from treated areas for the time we tell you;",
+                                                 "any preparation we ask for, such as storing food or covering surfaces;",
+                                                 "telling us beforehand about allergies, pregnancy, pets, fish tanks or vegetable gardens near the area, so we can adapt the treatment."]]),
+                ("Your property", ["Please tell us about anything we should avoid, such as buried irrigation lines, cables or plants you want to keep. If something about our work is not right, tell us on WhatsApp as soon as possible and we will look at it."]),
+                ("Liability", ["As far as Honduran law allows, our liability for any claim related to a service is limited to the price you paid for that service. We are not responsible for damage caused by safety instructions not being followed, or by events outside our control, such as storms. Nothing in these terms limits liability that the law does not allow us to limit."]),
+                ("Governing law", ["These terms are governed by the laws of Honduras. If there is a disagreement, we will first try to solve it directly with you. If that is not possible, it will go to the competent courts of Roatán, Bay Islands."]),
+                ("Contact", [f"Lawn &amp; landscape: {LAWN_WA}. Pest control &amp; garden care: {PEST_WA}."]),
+            ],
+        },
+        "es": {
+            "short": "Términos", "kicker": "Términos",
+            "title": "Términos de uso y servicio | DR Lawn & Landscape · Island Pest Control",
+            "desc": "Términos de este sitio y de los servicios de jardinería y control de plagas de Darío Reyes en Roatán: cotizaciones gratis, precios, agenda, clima y seguridad.",
+            "h1": "Términos de uso y servicio",
+            "intro": "Estos términos aplican a este sitio y a los servicios de DR Lawn &amp; Landscape Maintenance e Island Pest Control &amp; Garden Care, ambos dirigidos por Darío Reyes en Roatán. Al usar el sitio o reservar un servicio, los aceptas.",
+            "sections": [
+                ("Este sitio", ["El sitio es solo informativo. Describe nuestros servicios, pero no es una oferta ni un contrato. Procuramos que esté al día, y detalles como los servicios y la disponibilidad pueden cambiar."]),
+                ("Cotizaciones", ["Las cotizaciones son gratis. Una cotización es un estimado y no es definitiva hasta que ambos confirmamos por WhatsApp el trabajo, el precio y la fecha. Si el trabajo resulta distinto de lo que nos describiste, por ejemplo un área más grande o una plaga más extendida, te avisamos antes de seguir y acordamos contigo el nuevo precio."]),
+                ("Precios y pago", ["Los precios son en lempiras (HNL) o en dólares, según lo indique tu cotización. La forma y el momento del pago también se acuerdan en la cotización."]),
+                ("Zona de servicio", ["Trabajamos en Roatán y sus alrededores. Si no sabes si llegamos a tu zona, pregúntanos por WhatsApp."]),
+                ("Agenda y clima", ["La fecha y la hora las acordamos contigo por WhatsApp. Las lluvias fuertes o las tormentas pueden hacer que el trabajo al aire libre o los tratamientos no sean seguros o no funcionen; en ese caso reprogramamos para la siguiente fecha disponible sin costo adicional. Si necesitas cambiar una fecha, avísanos lo antes posible."]),
+                ("Tratamientos contra plagas y seguridad", ["Los tratamientos se aplican siguiendo las instrucciones de la etiqueta del producto. Antes de cada tratamiento te damos instrucciones de seguridad, y te comprometes a seguirlas, entre ellas:",
+                                                            ["mantener a niños, mascotas y personas ajenas lejos de las áreas tratadas durante el tiempo que te indiquemos;",
+                                                             "hacer la preparación que te pidamos, como guardar alimentos o cubrir superficies;",
+                                                             "avisarnos antes si hay alergias, embarazo, mascotas, peceras o huertos cerca del área, para adaptar el tratamiento."]]),
+                ("Tu propiedad", ["Cuéntanos de cualquier cosa que debamos evitar, como tuberías de riego enterradas, cables o plantas que quieras conservar. Si algo de nuestro trabajo no quedó bien, avísanos por WhatsApp lo antes posible y lo revisamos."]),
+                ("Responsabilidad", ["En la medida en que lo permita la ley hondureña, nuestra responsabilidad por cualquier reclamo relacionado con un servicio se limita al precio que pagaste por ese servicio. No respondemos por daños causados por no seguir las instrucciones de seguridad, ni por hechos fuera de nuestro control, como tormentas. Nada en estos términos limita la responsabilidad que la ley no permite limitar."]),
+                ("Ley aplicable", ["Estos términos se rigen por las leyes de Honduras. Si surge un desacuerdo, primero intentaremos resolverlo directamente contigo. Si no es posible, se someterá a los tribunales competentes de Roatán, Islas de la Bahía."]),
+                ("Contacto", [f"Jardinería y paisajismo: {LAWN_WA}. Control de plagas y jardines: {PEST_WA}."]),
+            ],
+        },
+    },
+    "legal": {
+        "en": {
+            "short": "Legal notice", "kicker": "Legal notice",
+            "title": "Legal Notice | DR Lawn & Landscape · Island Pest Control",
+            "desc": "Who runs this website: Darío Reyes, agricultural engineer, owner of DR Lawn & Landscape Maintenance and Island Pest Control & Garden Care in Roatán, Honduras.",
+            "h1": "Legal notice",
+            "intro": "Who runs this website and how to reach us.",
+            "sections": [
+                ("Owner", ["Darío Reyes, agricultural engineer (ingeniero agrónomo) trained at UNAG, Honduras' National University of Agriculture."]),
+                ("Trade names", ["This website presents two businesses with the same owner:",
+                                 ["<strong>DR Lawn &amp; Landscape Maintenance</strong>: lawn and landscape maintenance.",
+                                  "<strong>Island Pest Control &amp; Garden Care</strong>: pest control and garden care."]]),
+                ("Location", ["Roatán, Islas de la Bahía (Bay Islands), Honduras."]),
+                ("Contact", ["We are reached by WhatsApp:",
+                             [f"Lawn &amp; landscape: {LAWN_WA}", f"Pest control &amp; garden care: {PEST_WA}"],
+                             "Privacy requests go to the lawn number."]),
+                ("Hosting", [f"This website is hosted by Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, United States ({ext('https://vercel.com', 'vercel.com')})."]),
+                ("Copyright", [f"© {YEAR} Darío Reyes. The texts, the DR Lawn &amp; Landscape and Island Pest Control logos, the ladybug mascot and the design of this website belong to their owner. Please do not copy or reuse them without written permission. Sharing a link to any page is always welcome."]),
+                ("Photos", ["Photos of our work published on this website belong to Darío Reyes. Photos of a customer's property are only published with that customer's permission. If you see a photo of your property and want it removed, write to us and we will take it down."]),
+                ("External links", ["Links to WhatsApp open a service run by Meta, which has its own terms and privacy policy."]),
+            ],
+        },
+        "es": {
+            "short": "Aviso legal", "kicker": "Aviso legal",
+            "title": "Aviso legal | DR Lawn & Landscape · Island Pest Control",
+            "desc": "Quién está detrás de este sitio: Darío Reyes, ingeniero agrónomo, dueño de DR Lawn & Landscape Maintenance e Island Pest Control & Garden Care en Roatán, Honduras.",
+            "h1": "Aviso legal",
+            "intro": "Quién está detrás de este sitio y cómo contactarnos.",
+            "sections": [
+                ("Titular", ["Darío Reyes, ingeniero agrónomo egresado de la UNAG, la Universidad Nacional de Agricultura de Honduras."]),
+                ("Nombres comerciales", ["Este sitio presenta dos negocios con el mismo dueño:",
+                                         ["<strong>DR Lawn &amp; Landscape Maintenance</strong>: mantenimiento de jardines y áreas verdes.",
+                                          "<strong>Island Pest Control &amp; Garden Care</strong>: control de plagas y cuidado de jardines."]]),
+                ("Ubicación", ["Roatán, Islas de la Bahía, Honduras."]),
+                ("Contacto", ["Nos contactas por WhatsApp:",
+                              [f"Jardinería y paisajismo: {LAWN_WA}", f"Control de plagas y jardines: {PEST_WA}"],
+                              "Las consultas sobre privacidad van al número de jardinería."]),
+                ("Alojamiento", [f"Este sitio está alojado en Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, Estados Unidos ({ext('https://vercel.com', 'vercel.com')})."]),
+                ("Derechos de autor", [f"© {YEAR} Darío Reyes. Los textos, los logos de DR Lawn &amp; Landscape e Island Pest Control, la mascota mariquita y el diseño de este sitio pertenecen a su titular. No los copies ni los reutilices sin permiso por escrito. Compartir el enlace a cualquier página siempre es bienvenido."]),
+                ("Fotos", ["Las fotos de nuestro trabajo publicadas en este sitio pertenecen a Darío Reyes. Las fotos de la propiedad de un cliente solo se publican con su permiso. Si ves una foto de tu propiedad y quieres que la quitemos, escríbenos y la retiramos."]),
+                ("Enlaces externos", ["Los enlaces a WhatsApp abren un servicio de Meta, que tiene sus propios términos y su propia política de privacidad."]),
+            ],
+        },
+    },
+}
+
+
+def _legal_block(item):
+    if isinstance(item, list):
+        return "<ul>" + "".join(f"<li>{x}</li>" for x in item) + "</ul>"
+    return f"<p>{item}</p>"
+
+
+def legal_page(kind, lang):
+    p = PATHS[(kind, lang)]
+    home_ = rel(p, PATHS[("home", lang)])
+    d = LEGAL[kind][lang]
+    secs = "".join(f'<section aria-labelledby="s{i}"><h2 id="s{i}">{h}</h2>{"".join(_legal_block(x) for x in items)}</section>'
+                   for i, (h, items) in enumerate(d["sections"], 1))
+    others = " · ".join(f'<a href="{rel(p, PATHS[(k, lang)])}">{LEGAL[k][lang]["h1"]}</a>' for k in LEGAL_PAGES if k != kind)
+    upd = T(lang, f"Last updated: {LEGAL_UPDATED[0]}", f"Última actualización: {LEGAL_UPDATED[1]}")
+    body = f"""<main id="main" class="legal">
+  <div class="wrap crumbs"><a href="{home_}">{T(lang, "Home", "Inicio")}</a> / {d["short"]}</div>
+  <div class="wrap">
+    <article class="legal-card" aria-labelledby="hero-title">
+      <p class="kicker">DR Lawn &amp; Landscape · Island Pest Control</p>
+      <h1 id="hero-title">{d["h1"]}</h1>
+      <p class="legal-updated"><time datetime="{LEGAL_UPDATED[2]}">{upd}</time></p>
+      <p class="lead">{d["intro"]}</p>
+      <div class="legal-body">{secs}</div>
+      <p class="legal-more">{T(lang, "See also", "Ver también")}: {others}</p>
+    </article>
+  </div>
+</main>
+"""
+    return head(kind, lang, d["title"], d["desc"]) + header(kind, lang) + body + footer(kind, lang)
+
+
 # ---------------------------------------------------------------- 404 (self-contained, works at any path)
 NOT_FOUND = """<!doctype html>
 <html lang="en">
@@ -986,18 +1185,44 @@ def write(path, content):
     print("wrote", path, len(content))
 
 
+def csp_hash(src):
+    import base64, hashlib
+    return "'sha256-" + base64.b64encode(hashlib.sha256(src.encode()).digest()).decode() + "'"
+
+
+def vercel_json():
+    """vercel.json is generated so the CSP hashes always match the two inline scripts (JS flag + 404 base fix)."""
+    import json, re
+    inline_404 = re.search(r"<script>(.*?)</script>", NOT_FOUND, re.S).group(1)
+    csp = ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
+           f"script-src 'self' {csp_hash(JS_FLAG)} {csp_hash(inline_404)}; font-src 'self'; connect-src 'self'; "
+           "frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://wa.me https://api.whatsapp.com")
+    sec = [{"key": "X-Content-Type-Options", "value": "nosniff"},
+           {"key": "X-Frame-Options", "value": "DENY"},
+           {"key": "Referrer-Policy", "value": "strict-origin-when-cross-origin"},
+           {"key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=()"},
+           {"key": "Content-Security-Policy", "value": csp}]
+    cfg = {"trailingSlash": True, "headers": [
+        {"source": "/assets/(.*)", "headers": [{"key": "Cache-Control", "value": "public, max-age=604800"}]},
+        {"source": "/(.*)", "headers": sec}]}
+    return json.dumps(cfg, indent=2, ensure_ascii=False) + "\n"
+
+
 def main():
     for lang in ("en", "es"):
         write(PATHS[("home", lang)] + "index.html", home(lang))
         write(PATHS[("lawn", lang)] + "index.html", lawn_page(lang))
         write(PATHS[("pest", lang)] + "index.html", pest_page(lang))
+        for kind in LEGAL_PAGES:
+            write(PATHS[(kind, lang)] + "index.html", legal_page(kind, lang))
     write("404.html", NOT_FOUND)
+    write("vercel.json", vercel_json())
     urls = []
-    for page in ("home", "lawn", "pest"):
+    for page in ("home", "lawn", "pest") + LEGAL_PAGES:
         for lang in ("en", "es"):
             alts = "".join(f'\n    <xhtml:link rel="alternate" hreflang="{l}" href="{BASE + PATHS[(page, l)]}"/>' for l in ("en", "es"))
             alts += f'\n    <xhtml:link rel="alternate" hreflang="x-default" href="{BASE + PATHS[(page, "en")]}"/>'
-            urls.append(f"  <url>\n    <loc>{BASE + PATHS[(page, lang)]}</loc>\n    <lastmod>2026-10-19</lastmod>{alts}\n  </url>")
+            urls.append(f"  <url>\n    <loc>{BASE + PATHS[(page, lang)]}</loc>\n    <lastmod>2026-10-22</lastmod>{alts}\n  </url>")
     write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
           + "\n".join(urls) + "\n</urlset>\n")
     write("robots.txt", f"User-agent: *\nAllow: /\n\nSitemap: {BASE}sitemap.xml\n")
